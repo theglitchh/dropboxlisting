@@ -150,23 +150,12 @@ function downloadAllFiles(accessToken, currentPath) {
         }
 
         var zip = new JSZip();
+        var filePromises = [];
+        var maxConcurrentDownloads = 5; // Adjust the maximum concurrent downloads as needed
 
-        // Function to handle adding files to the zip
-        const addFileToZip = (zip, entry) => {
-            const filePathParts = entry.path_display.split('/');
-            let currentFolder = zip;
-
-            // Iterate through each part of the file path
-            for (let i = 0; i < filePathParts.length - 1; i++) {
-                const folderName = filePathParts[i];
-                // Ensure the folder exists in the zip
-                if (!currentFolder.folder(folderName).folderExists) {
-                    currentFolder = currentFolder.folder(folderName);
-                }
-            }
-
-            // Add the file to the correct folder
-            currentFolder.file(filePathParts[filePathParts.length - 1], fetch('https://content.dropboxapi.com/2/files/download', {
+        // Function to download a single file and add it to the zip
+        function downloadAndAddFile(entry) {
+            return fetch('https://content.dropboxapi.com/2/files/download', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -179,75 +168,55 @@ function downloadAllFiles(accessToken, currentPath) {
                 if (!response.ok) {
                     throw new Error(`Failed to fetch ${entry.path_display}`);
                 }
-                return response.blob();
-            }));
-        };
+                return response.blob().then(blob => {
+                    zip.file(entry.path_display.substring(1), blob);
+                });
+            });
+        }
 
-        // Iterate over each file in the directory
+        // Queue up file download promises with throttling
         data.entries.forEach(entry => {
-            // Check if the entry is a file
             if (entry['.tag'] === 'file') {
-                // Add the file to the zip
-                addFileToZip(zip, entry);
+                filePromises.push(() => downloadAndAddFile(entry));
             }
         });
 
-        // Generate the zip file
-        zip.generateAsync({ type: 'blob' })
-        .then(content => {
-            var url = window.URL.createObjectURL(content);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'all_files.zip';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
+        // Execute promises with throttling
+        function executePromisesWithThrottle(promises) {
+            return promises.reduce((promiseChain, currentTask) => {
+                return promiseChain.then(chainResults =>
+                    currentTask().then(currentResult =>
+                        [...chainResults, currentResult]
+                    )
+                );
+            }, Promise.resolve([]));
+        }
+
+        var chunkedPromises = [];
+        for (var i = 0; i < filePromises.length; i += maxConcurrentDownloads) {
+            chunkedPromises.push(filePromises.slice(i, i + maxConcurrentDownloads));
+        }
+
+        var finalPromise = chunkedPromises.reduce((promiseChain, chunk) => {
+            return promiseChain.then(() => executePromisesWithThrottle(chunk));
+        }, Promise.resolve());
+
+        finalPromise.then(() => {
+            zip.generateAsync({ type: 'blob' }).then(content => {
+                var url = window.URL.createObjectURL(content);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'all_files.zip';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            });
         });
     })
     .catch(error => {
         console.log('Error downloading all files from Dropbox:', error);
     });
-}
-
-
-
-
-function addFilesToZip(zip, files, accessToken) {
-    // Create an array to store promises for fetching file contents
-    const promises = [];
-
-    // Iterate over each file in the directory
-    files.forEach(file => {
-        // Fetch the file content
-        const promise = fetch('https://content.dropboxapi.com/2/files/download', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Dropbox-API-Arg': JSON.stringify({
-                    path: file.path_display
-                })
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch ${file.path_display}`);
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            // Add the file content to the zip
-            zip.file(file.name, blob);
-        })
-        .catch(error => {
-            console.error(`Error downloading file ${file.path_display}: ${error}`);
-        });
-
-        promises.push(promise);
-    });
-
-    // Wait for all promises to resolve before generating the zip
-    return Promise.all(promises);
 }
 
 
