@@ -50,7 +50,7 @@ function displayFiles(files, currentPath) {
         fileList.append('<p>No files found in the directory.</p>');
     } else {
         var fileTable = $('<table border="1" cellpadding="5" cellspacing="0"></table>');
-        fileTable.append('<tr><th>Serial Number</th><th>Name</th><th>Type</th><th>Path</th></tr>');
+        fileTable.append(`<tr><th>Serial Number</th><th>${currentPath === '' ? 'Project Folder' : currentPath.split('/').pop()}</th><th>Type</th><th>Path</th></tr>`);
 
         files.sort((a, b) => {
             if (a['.tag'] === 'folder' && b['.tag'] === 'file') return -1;
