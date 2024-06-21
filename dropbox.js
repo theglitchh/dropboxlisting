@@ -49,8 +49,12 @@ function displayFiles(files, currentPath) {
     if (files.length === 0) {
         fileList.append('<p>No files found in the directory.</p>');
     } else {
-        var fileTable = $('<table border="1" cellpadding="5" cellspacing="0"></table>');
-        fileTable.append(`<tr><th>Serial Number</th><th>${currentPath === '' ? 'Project Folder' : currentPath.split('/').pop()}</th><th>Type</th><th>Path</th></tr>`);
+        var fileTable = $('<table border="1" cellpadding="5" cellspacing="0"></table>').css({
+            'margin': 'auto', // Center horizontally
+            'text-align': 'left', // Ensure table content is left-aligned
+            'align-items': 'center' // Center vertically
+        });
+        fileTable.append(`<tr><th>Serial Number</th><th>${currentPath === '' ? 'Project Folder' : currentPath.split('/').pop()}</th><th>Type</th><th>Open Folders</th></tr>`);
 
         files.sort((a, b) => {
             if (a['.tag'] === 'folder' && b['.tag'] === 'file') return -1;
@@ -67,26 +71,23 @@ function displayFiles(files, currentPath) {
             fileRow.append(`<td>${index + 1}</td>`);
             fileRow.append(`<td>${fileName}</td>`);
             fileRow.append(`<td>${fileType}</td>`);
-            fileRow.append(`<td>${filePath}</td>`);
 
+            var openFoldersCell = $('<td></td>'); // Create a cell for the "Open Folders" button
             if (fileType === 'folder') {
-                fileRow.css('cursor', 'pointer');
-                fileRow.click(() => {
+                var openFoldersButton = $(`<button style="align-items: center; background-color: #f4701e; border: 0; border-radius: 100px; box-sizing: border-box; color: #ffffff; cursor: pointer; display: inline-flex; font-family: -apple-system, system-ui, system-ui, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 20px; max-width: 480px; min-height: 40px; min-width: 0px; overflow: hidden; padding: 0px; padding-left: 20px; padding-right: 20px; text-align: center; touch-action: manipulation; transition: background-color 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s, box-shadow 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s, color 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s; user-select: none; -webkit-user-select: none; vertical-align: middle;">Open Folders</button>`);
+                openFoldersButton.click(() => {
                     listFilesInDirectory(accessToken, filePath);
                 });
-            } else {
-                fileRow.css('cursor', 'pointer');
-                fileRow.click(() => {
-                    downloadFile(accessToken, filePath, fileName);
-                });
+                openFoldersCell.append(openFoldersButton);
             }
+            fileRow.append(openFoldersCell);
 
             fileTable.append(fileRow);
         });
 
         var buttonContainer = $('<div></div>');
         if (currentPath !== "") {
-            var backButton = $('<button>Back</button>');
+            var backButton = $('<button class="backbutton" style="display: flex; justify-content: center; gap: 10px;align-items: center; background-color: #005893; border: 0; border-radius: 100px; box-sizing: border-box; color: #ffffff; cursor: pointer; display: inline-flex; font-family: -apple-system, system-ui, system-ui, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 20px; max-width: 480px; min-height: 40px; min-width: 0px; overflow: hidden; padding: 0px; padding-left: 20px; padding-right: 20px; text-align: center; touch-action: manipulation; transition: background-color 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s, box-shadow 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s, color 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s; user-select: none; -webkit-user-select: none; vertical-align: middle;">Back</button>');
             backButton.click(() => {
                 var parentPath = currentPath.split('/').slice(0, -1).join('/');
                 listFilesInDirectory(accessToken, parentPath);
@@ -94,16 +95,22 @@ function displayFiles(files, currentPath) {
             buttonContainer.append(backButton);
         }
 
-        var downloadAllButton = $('<button>Download All</button>');
-        downloadAllButton.click(() => {
-            downloadAllFiles(accessToken, currentPath);
-        });
+        var downloadAllButton = $(`<button class="DownloadALL" style="align-items: center; background-color: #f4701e; border: 0; border-radius: 100px; box-sizing: border-box; color: #ffffff; cursor: pointer; display: inline-flex; font-family: -apple-system, system-ui, system-ui, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 20px; max-width: 480px; min-height: 40px; min-width: 0px; overflow: hidden; padding: 0px; padding-left: 20px; padding-right: 20px; text-align: center; touch-action: manipulation; transition: background-color 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s, box-shadow 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s, color 0.167s cubic-bezier(0.4, 0, 0.2, 1) 0s; user-select: none; -webkit-user-select: none; vertical-align: middle;">Download All</button>`);
+        if (currentPath != "") {
+            downloadAllButton.click(() => {
+                downloadAllFiles(accessToken, currentPath);
+            });
+        } else {
+            downloadAllButton.hide(); // Hide the button if currentPath is empty
+        }
         buttonContainer.append(downloadAllButton);
 
         fileList.append(buttonContainer);
         fileList.append(fileTable);
     }
 }
+
+
 
 function downloadFile(accessToken, filePath, fileName) {
     fetch('https://content.dropboxapi.com/2/files/download', {
@@ -131,7 +138,34 @@ function downloadFile(accessToken, filePath, fileName) {
     });
 }
 
+// Function to show the popup
+function showPopup(message) {
+    var div = $('<div>' + message + '</div>');
+    div.dialog({
+        width: 500,
+        height: 'auto',
+        modal: true,
+        closeOnEscape: false,
+        resizable: false,
+        draggable: false,
+        title: "Please Wait",
+         open: function(event, ui) {
+            // Hide the close button
+            $(this).closest('.ui-dialog').find('.ui-dialog-titlebar-close').hide();
+        }
+    });
+}
+
+// Function to close the popup
+function closePopup() {
+    $('.ui-dialog').remove();
+    $('.ui-widget-overlay').remove();
+}
+
 function downloadAllFiles(accessToken, currentPath) {
+    // Show the popup when starting the download
+    showPopup("Downloading all files...");
+
     fetch('https://api.dropboxapi.com/2/files/list_folder', {
         method: 'POST',
         headers: {
@@ -203,6 +237,7 @@ function downloadAllFiles(accessToken, currentPath) {
 
         finalPromise.then(() => {
             zip.generateAsync({ type: 'blob' }).then(content => {
+                closePopup(); // Close the popup when the download starts
                 var url = window.URL.createObjectURL(content);
                 var a = document.createElement('a');
                 a.href = url;
@@ -216,7 +251,11 @@ function downloadAllFiles(accessToken, currentPath) {
     })
     .catch(error => {
         console.log('Error downloading all files from Dropbox:', error);
+        closePopup(); // Close the popup in case of an error
     });
 }
+
+
+
 
 
