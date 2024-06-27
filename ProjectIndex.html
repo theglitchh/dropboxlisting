@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<img src="./SRI_Logo.jpg" alt="Girl in a jacket" width="80" height="80"> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropbox File List</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="./jszip.js"></script>
+    <script src="./FileSaver.js"></script>
+
+    <style type="text/css">
+
+.backbutton {
+  background-color: white; 
+  color: black; 
+  border: 2px solid #008CBA;
+}
+
+.backbutton:hover {
+  background-color: #008CBA;
+  color: white;
+}
+</style>
+</head>
+<body>
+   <center> <h1 style=" font-family: -apple-system, system-ui, system-ui, Helvetica, Arial, sans-serif; " class="headingtitle">Dropbox File List</h1> </center>
+    <div id="fileList">
+        <!-- File list will be populated here -->
+    </div>
+
+    <script src="dropbox.js"></script>
+</body>
+</html>
